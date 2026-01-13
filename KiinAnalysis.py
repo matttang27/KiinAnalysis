@@ -65,6 +65,7 @@ def fetch_player_places(
         "TR.Place_Number IS NOT NULL",
         "TR.Place_Number >= 1",
         "TR.Place_Number <= 10",
+        "TR.OverviewPage NOT LIKE '%All Stars%'",  # Exclude Azubu LoL The Champions All Stars
     ]
     
     if regular_season_only:

@@ -80,7 +80,6 @@ You'll need to create a `wiki_account_me.json` file with your Leaguepedia creden
 <details>
 <summary>View all 33 tournaments</summary>
 
-- Azubu LoL The Champions All Stars (Lowkey idk why this was included but I'm too lazy to remove it)
 - Champions/2012 Season/Spring
 - Champions/2012 Season/Summer
 - Champions/2013 Season/Spring
