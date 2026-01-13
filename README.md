@@ -8,14 +8,17 @@ This script analyzes player placement data from Korea's top League of Legends le
 
 ### The "Complete Collection" Players
 
-Only **2 people** have finished in all 10 placement positions across LCK history:
+Only **3 people** have finished in all 10 placement positions across LCK history:
 
 | Player | Role | How They Did It |
 |:-------|:-----|:----------------|
 | **Edgar** | Coach | 10/10 in Regular Season |
 | **Kiin** | Top | 10/10 including Playoffs |
+| **Micro** | Coach | 10/10 including Playoffs |
 
 ### Closest Active Players to Completing the Challenge
+
+**Regular Season:**
 
 | Player | Progress | Role | Missing Placements |
 |:-------|:---------|:-----|:-------------------|
@@ -27,7 +30,20 @@ Only **2 people** have finished in all 10 placement positions across LCK history
 | Kellin | 8/10 | Support | 8th, 9th |
 | Aiming | 8/10 | Bot | 9th, 10th |
 
-> Faker has only 6/10 placements - he's never finished 6th, 8th, 9th, or 10th.
+**All Tournaments:**
+
+| Player | Progress | Role | Missing Placements |
+|:-------|:---------|:-----|:-------------------|
+| Ucal | 9/10 | Mid | 2nd |
+| Kingen | 9/10 | Top | 7th |
+| Teddy | 8/10 | Bot | 3rd, 10th |
+| Bdd | 8/10 | Mid | 6th, 7th |
+| Lehends | 8/10 | Support | 7th, 10th |
+| Kellin | 8/10 | Support | 8th, 9th |
+| Life | 8/10 | Support | 8th, 9th |
+| Aiming | 8/10 | Bot | 9th, 10th |
+
+> Faker has only 6/10 placements—he's never finished 6th, 8th, 9th, or 10th.
 
 ## 🔧 How It Works
 
@@ -65,7 +81,7 @@ You'll need to create a `wiki_account_me.json` file with your Leaguepedia creden
 |:-------|:------|
 | Years Covered | 2015–2025 |
 | Regular Seasons | 22 |
-| Total Tournaments | 60+ |
+| Total Tournaments | 69 |
 | Unique Players (Regular) | 446 |
 | Unique Players (All) | 499 |
 
@@ -78,9 +94,9 @@ You'll need to create a `wiki_account_me.json` file with your Leaguepedia creden
 ### Playoffs & Other Tournaments Included
 
 <details>
-<summary>View all 33 tournaments</summary>
+<summary>View all 48 tournaments</summary>
 
-- Azubu LoL The Champions All Stars (Lowkey idk why this was included but I'm too lazy to remove it)
+- Azubu LoL The Champions All Stars (lowk I don't know why this was included)
 - Champions/2012 Season/Spring
 - Champions/2012 Season/Summer
 - Champions/2013 Season/Spring
@@ -92,28 +108,42 @@ You'll need to create a `wiki_account_me.json` file with your Leaguepedia creden
 - Champions/2015 Season/Spring Playoffs
 - Champions/2015 Season/Spring Preseason
 - Champions/2015 Season/Summer Playoffs
+- LCK/2016 Season/Regional Finals
 - LCK/2016 Season/Spring Playoffs
 - LCK/2016 Season/Summer Playoffs
+- LCK/2017 Season/Regional Finals
 - LCK/2017 Season/Spring Playoffs
 - LCK/2017 Season/Summer Playoffs
+- LCK/2018 Season/Regional Finals
 - LCK/2018 Season/Spring Playoffs
 - LCK/2018 Season/Summer Playoffs
+- LCK/2019 Season/Regional Finals
 - LCK/2019 Season/Spring Playoffs
 - LCK/2019 Season/Summer Playoffs
+- LCK/2020 Season/Regional Finals
 - LCK/2020 Season/Spring Playoffs
 - LCK/2020 Season/Summer Playoffs
+- LCK/2021 Season/Regional Finals
 - LCK/2021 Season/Spring Playoffs
 - LCK/2021 Season/Summer Playoffs
+- LCK/2022 Season/Regional Finals
 - LCK/2022 Season/Spring Playoffs
 - LCK/2022 Season/Summer Playoffs
+- LCK/2023 Season/Regional Finals
 - LCK/2023 Season/Spring Playoffs
 - LCK/2023 Season/Summer Playoffs
+- LCK/2024 Season/Regional Finals
 - LCK/2024 Season/Spring Playoffs
 - LCK/2024 Season/Summer Playoffs
 - LCK/2025 Season/Cup
 - LCK/2025 Season/Road to MSI
 - LCK/2025 Season/Season Play-In
 - LCK/2025 Season/Season Playoffs
+- LCK/2026 Season/Cup
+- LCK/2026 Season/Road to MSI
+- LCK/2026 Season/Rounds 1-2
+- LCK/2026 Season/Season Play-In
+- LCK/2026 Season/Season Playoffs
 
 </details>
 

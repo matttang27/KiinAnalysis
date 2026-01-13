@@ -55,13 +55,17 @@ def fetch_player_places(
     - "LoL Champions Korea" (2016+)
     - "LoL The Champions" (2015)
     - 2025+ new format with Rounds 1-2 and Rounds 3-5
+    - LCK Regional Finals (under "World Championship" league)
     
     If regular_season_only=False, includes all regional tournaments (playoffs, etc.)
     """
     league_filter = " OR ".join(f"T.League='{l}'" for l in leagues)
     
+    # Also include LCK Regional Finals (tracked under World Championship league)
+    lck_regional_filter = "(T.League='World Championship' AND TR.OverviewPage LIKE 'LCK/%Regional Finals')"
+    
     where_clauses = [
-        f"({league_filter})",
+        f"(({league_filter}) OR {lck_regional_filter})",
         "TR.Place_Number IS NOT NULL",
         "TR.Place_Number >= 1",
         "TR.Place_Number <= 10",
