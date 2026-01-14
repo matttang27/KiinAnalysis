@@ -4,6 +4,8 @@
 
 This script analyzes player placement data from Korea's top League of Legends league (LCK) to find which players have achieved every possible regular season finish—from 1st place champions to 10th place.
 
+I also posted my findings on [reddit](https://www.reddit.com/r/leagueoflegends/comments/1qbzdo5/the_closest_players_to_achieving_the_kiin_placing/)
+
 ## 📊 Key Findings
 
 ### The "Complete Collection" Players
