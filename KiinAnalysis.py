@@ -1,53 +1,21 @@
-# pip install mwrogue
 from __future__ import annotations
 
-import time
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Iterable
 
 from mwrogue.esports_client import EsportsClient
-from mwrogue.auth_credentials import AuthCredentials
 
-
-def cargo_all(site: EsportsClient, *, limit: int = 500, **query_kwargs):
-    """Fetch all Cargo rows via pagination (offset stepping)."""
-    out = []
-    off = 0
-    while True:
-        rows = site.cargo_client.query(limit=limit, offset=off, **query_kwargs)
-        if not rows:
-            break
-        out.extend(rows)
-        off += limit
-        time.sleep(0.1)  # Small delay to avoid rate limiting
-    return out
-
-
-def fetch_active_players(site: EsportsClient):
-    """
-    Fetch players who have an active contract (Contract date > today).
-    Returns a set of player IDs who are currently under contract.
-    """
-    from datetime import datetime
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    rows = cargo_all(
-        site,
-        tables="Players",
-        fields="ID, Team, Contract, IsRetired",
-        where=f"Contract > '{today}' AND (IsRetired IS NULL OR IsRetired = false)",
-    )
-    
-    return {r["ID"] for r in rows if r.get("ID")}
+from leaguepedia import CargoRow, cargo_all, create_site, fetch_active_players
 
 
 def fetch_player_places(
     site: EsportsClient,
     *,
-    leagues=("LoL Champions Korea", "LoL The Champions"),
-    splits=("Spring", "Summer", "Rounds 1-2", "Rounds 3-5"),  # Include 2025 format
-    regular_season_only=True,
-):
+    leagues: Iterable[str] = ("LoL Champions Korea", "LoL The Champions"),
+    splits: Iterable[str] = ("Spring", "Summer", "Rounds 1-2", "Rounds 3-5"),
+    regular_season_only: bool = True,
+) -> list[CargoRow]:
     """
     Join TournamentResults, TournamentPlayers, and Tournaments to get
     player placements in LCK regular seasons.
@@ -99,37 +67,34 @@ def fetch_player_places(
     return rows
 
 
-def filter_shared_placements(rows):
+def filter_shared_placements(rows: list[CargoRow]) -> list[CargoRow]:
     """
     Remove placements where multiple teams share the same place in a tournament.
     (e.g., 3-4 ties in playoffs)
     """
-    # Count how many teams have each place in each tournament
-    place_counts = defaultdict(lambda: defaultdict(int))
-    for r in rows:
-        if r.get("Place") is not None:
-            place_counts[r["OverviewPage"]][r["Place"]] += 1
-    
     # Keep only rows where the place is unique in that tournament
     # (accounting for multiple players per team)
-    teams_per_place = defaultdict(lambda: defaultdict(set))
+    teams_per_place: defaultdict[str, defaultdict[int, set[str | None]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
     for r in rows:
-        if r.get("Place") is not None:
-            teams_per_place[r["OverviewPage"]][r["Place"]].add(r["Team"])
+        place = r.get("Place")
+        overview = r.get("OverviewPage")
+        if isinstance(place, int) and isinstance(overview, str):
+            teams_per_place[overview][place].add(r.get("Team"))
     
-    filtered = []
+    filtered: list[CargoRow] = []
     for r in rows:
-        if r.get("Place") is not None:
-            tournament = r["OverviewPage"]
-            place = r["Place"]
-            # If only one team has this place, keep it
+        place = r.get("Place")
+        tournament = r.get("OverviewPage")
+        if isinstance(place, int) and isinstance(tournament, str):
             if len(teams_per_place[tournament][place]) == 1:
                 filtered.append(r)
     
     return filtered
 
 
-def only_valid_seasons(rows):
+def only_valid_seasons(rows: list[CargoRow]) -> list[CargoRow]:
     """
     Keep only tournaments from valid seasons:
     - 2015 Spring: 8 teams (valid)
@@ -140,18 +105,18 @@ def only_valid_seasons(rows):
     
     For 2025 Rounds 3-5: Legend group places 1-5 map to 1-5, Rise group 1-5 map to 6-10
     """
-    max_place = defaultdict(int)
-    year_per_tournament = {}
-    split_per_tournament = {}
-    team_count = defaultdict(set)
+    max_place: defaultdict[str, int] = defaultdict(int)
+    year_per_tournament: dict[str, int] = {}
+    split_per_tournament: dict[str, str] = {}
+    team_count: defaultdict[str, set[str | None]] = defaultdict(set)
     
     for r in rows:
         p = r.get("Place")
-        if p is None:
+        t = r.get("OverviewPage")
+        if not isinstance(p, int) or not isinstance(t, str):
             continue
-        t = r["OverviewPage"]
         year_per_tournament[t] = int(r.get("Year", 0))
-        split_per_tournament[t] = r.get("Split", "")
+        split_per_tournament[t] = str(r.get("Split", ""))
         team_count[t].add(r.get("Team"))
         if p > max_place[t]:
             max_place[t] = p
@@ -179,10 +144,14 @@ def only_valid_seasons(rows):
         if m >= 8:
             good.add(t)
     
-    return [r for r in rows if r["OverviewPage"] in good]
+    return [
+        r
+        for r in rows
+        if isinstance(r.get("OverviewPage"), str) and r["OverviewPage"] in good
+    ]
 
 
-def adjust_2025_placements(rows):
+def adjust_2025_placements(rows: list[CargoRow]) -> list[CargoRow]:
     """
     For 2025 Rounds 3-5, adjust placements:
     - Legend group (top teams): places 1-5 stay as 1-5
@@ -190,20 +159,21 @@ def adjust_2025_placements(rows):
     
     We detect Rise group by checking if the tournament name contains 'Rise'
     """
-    adjusted = []
+    adjusted: list[CargoRow] = []
     for r in rows.copy():
         year = int(r.get("Year", 0))
-        split = r.get("Split", "")
-        tname = r.get("TName", "")
-        overview = r.get("OverviewPage", "")
+        split = str(r.get("Split", ""))
+        tname = str(r.get("TName", ""))
+        overview = str(r.get("OverviewPage", ""))
         
         # Check if this is 2025 Rounds 3-5 Rise group
         if year >= 2025 and "Rounds 3-5" in split:
             # Rise group teams should have their placements offset by 5
             if "Rise" in tname or "Rise" in overview:
-                if r["Place"] is not None and r["Place"] <= 5:
+                place = r.get("Place")
+                if isinstance(place, int) and place <= 5:
                     r = dict(r)  # Make a copy to modify
-                    r["Place"] = r["Place"] + 5
+                    r["Place"] = place + 5
         
         adjusted.append(r)
     
@@ -220,42 +190,53 @@ class PlayerScore:
     teams: tuple[str, ...]
 
 
-def compute_closest(rows, target_places=range(1, 11)):
+@dataclass
+class TournamentSummary:
+    teams: set[str]
+    players: set[str]
+    year: int = 0
+    split: str = ""
+
+
+def compute_closest(
+    rows: list[CargoRow],
+    target_places: Iterable[int] = range(1, 11),
+) -> list[PlayerScore]:
     target = set(target_places)
-    per = defaultdict(set)
-    player_roles = defaultdict(set)
-    player_last_year = defaultdict(int)
-    player_teams = defaultdict(set)
+    per: defaultdict[str, set[int]] = defaultdict(set)
+    player_roles: defaultdict[str, set[str]] = defaultdict(set)
+    player_last_year: defaultdict[str, int] = defaultdict(int)
+    player_teams: defaultdict[str, set[str]] = defaultdict(set)
 
     for r in rows:
         p = r.get("Place")
-        role = r.get("Role", "")
-        player = r["Player"]
-        year_str = r.get("Year", "0") or "0"
+        role = str(r.get("Role", ""))
+        player = str(r.get("Player", ""))
+        year_str = str(r.get("Year", "0") or "0")
         try:
             year = int(year_str)
         except ValueError:
             year = 0
-        team = r.get("Team", "")
+        team = str(r.get("Team", ""))
         
         # Skip empty player names (bad data)
         if not player or not player.strip():
             continue
         
-        if p in target:
+        if isinstance(p, int) and p in target:
             per[player].add(p)
         if role:
             # Role can be comma-separated (e.g., "Top,Mid"), split them
-            for r in role.split(','):
-                r = r.strip()
-                if r:
-                    player_roles[player].add(r)
+            for role_name in role.split(','):
+                role_name = role_name.strip()
+                if role_name:
+                    player_roles[player].add(role_name)
         if year > player_last_year[player]:
             player_last_year[player] = year
         if team:
             player_teams[player].add(team)
 
-    scored = []
+    scored: list[PlayerScore] = []
     for pl, got in per.items():
         got2 = tuple(sorted(got))
         miss = tuple(sorted(target - got))
@@ -269,8 +250,7 @@ def compute_closest(rows, target_places=range(1, 11)):
 
 
 def main():
-    creds = AuthCredentials(user_file="me")
-    site = EsportsClient("lol", credentials=creds)
+    site = create_site()
 
     leagues = ("LoL Champions Korea", "LoL The Champions")  # Include 2015 name
     splits = ("Spring", "Summer", "Rounds 1-2", "Rounds 3-5")  # Include 2025 format
@@ -302,26 +282,37 @@ def main():
     print("=" * 60)
     
     # Group by tournament to see what's included
-    tournaments = defaultdict(lambda: {"teams": set(), "players": set()})
+    tournaments: defaultdict[str, TournamentSummary] = defaultdict(
+        lambda: TournamentSummary(teams=set(), players=set())
+    )
     for r in rows_regular:
-        key = r["OverviewPage"]
-        tournaments[key]["teams"].add(r["Team"])
-        tournaments[key]["players"].add(r["Player"])
-        tournaments[key]["year"] = r["Year"]
-        tournaments[key]["split"] = r["Split"]
+        key = r.get("OverviewPage")
+        team = r.get("Team")
+        player = r.get("Player")
+        if not isinstance(key, str):
+            continue
+        if isinstance(team, str):
+            tournaments[key].teams.add(team)
+        if isinstance(player, str):
+            tournaments[key].players.add(player)
+        tournaments[key].year = int(r.get("Year", 0))
+        tournaments[key].split = str(r.get("Split", ""))
     
     # Sort by year and split
-    sorted_tournaments = sorted(tournaments.items(), key=lambda x: (x[1]["year"], x[1]["split"]))
+    sorted_tournaments = sorted(
+        tournaments.items(),
+        key=lambda item: (item[1].year, item[1].split),
+    )
     
     print(f"\nFound {len(sorted_tournaments)} regular seasons with 10 teams:\n")
     print(f"{'Year':<6} {'Split':<8} {'Teams':<6} {'Players':<8} Tournament")
     print("-" * 70)
     for key, data in sorted_tournaments:
-        print(f"{data['year']:<6} {data['split']:<8} {len(data['teams']):<6} {len(data['players']):<8} {key}")
+        print(f"{data.year:<6} {data.split:<8} {len(data.teams):<6} {len(data.players):<8} {key}")
     
     # Summary by year
     print("\n" + "-" * 70)
-    years_covered = sorted(set(t[1]["year"] for t in sorted_tournaments))
+    years_covered = sorted(set(item[1].year for item in sorted_tournaments))
     print(f"Years covered: {years_covered[0]} - {years_covered[-1]} ({len(years_covered)} years)")
     print(f"Total seasons: {len(sorted_tournaments)}")
     
@@ -335,9 +326,9 @@ def main():
         print("✅ All expected years (2015-2024) are present")
     
     # Check splits per year
-    splits_per_year = defaultdict(list)
-    for key, data in sorted_tournaments:
-        splits_per_year[data["year"]].append(data["split"])
+    splits_per_year: defaultdict[int, list[str]] = defaultdict(list)
+    for _, data in sorted_tournaments:
+        splits_per_year[data.year].append(data.split)
     
     incomplete_years = [(y, s) for y, s in splits_per_year.items() if len(s) < 2]
     if incomplete_years:
@@ -361,13 +352,13 @@ def main():
     print(f"Found {len(active_players)} players with active contracts\n")
 
     # Helper functions
-    def show(pl_name: str, scored_list):
+    def show(pl_name: str, scored_list: list[PlayerScore]) -> PlayerScore | None:
         for s in scored_list:
             if s.player.lower() == pl_name.lower():
                 return s
         return None
 
-    def format_roles(roles):
+    def format_roles(roles: tuple[str, ...]) -> str:
         """Format roles, noting if player is/was a coach."""
         # Deduplicate and categorize
         playing_roles = {'Top', 'Jungle', 'Mid', 'Bot', 'Support'}
@@ -386,17 +377,17 @@ def main():
                 parts.append(', '.join(staff))
         return ' '.join(parts) if parts else 'Unknown'
 
-    def is_active(s, active_players):
+    def is_active(s: PlayerScore, active_players: set[str]) -> bool:
         """Check if player has a current contract."""
         return s.player in active_players
 
-    def status_emoji(s, active_players):
+    def status_emoji(s: PlayerScore, active_players: set[str]) -> str:
         """Return status indicator."""
         if is_active(s, active_players):
             return "🟢"  # Active (has contract)
         return "⚪"  # Inactive/No contract
 
-    def places_visual(got, missing):
+    def places_visual(got: tuple[int, ...], missing: tuple[int, ...]) -> str:
         """Create a visual representation of places achieved."""
         result = []
         for i in range(1, 11):
@@ -447,7 +438,11 @@ def main():
     faker_all = show("Faker", scored_all)
     
     # Count unique tournaments in all data
-    all_tournaments = set(r["OverviewPage"] for r in rows_all)
+    all_tournaments = {
+        overview
+        for r in rows_all
+        if isinstance((overview := r.get("OverviewPage")), str)
+    }
     
     print("## 🏆 All Regional Tournaments (incl. Playoffs)")
     print()
@@ -474,8 +469,13 @@ def main():
     print()
     
     # Group tournaments by type
-    regular_tournaments = sorted(set(r["OverviewPage"] for r in rows_regular))
-    all_tournament_list = sorted(all_tournaments)
+    regular_tournaments = sorted(
+        {
+            overview
+            for r in rows_regular
+            if isinstance((overview := r.get("OverviewPage")), str)
+        }
+    )
     playoff_tournaments = sorted(all_tournaments - set(regular_tournaments))
     
     print(f"### Regular Seasons ({len(regular_tournaments)})")
